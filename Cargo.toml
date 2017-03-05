@@ -1,0 +1,6 @@
+[package]
+name = "tiny-rust-lisp"
+version = "0.1.0"
+authors = ["Mitsunori Komatsu <komamitsu@gmail.com>"]
+
+[dependencies]

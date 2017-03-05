@@ -1,0 +1,4 @@
+[root]
+name = "tiny-rust-lisp"
+version = "0.1.0"
+
