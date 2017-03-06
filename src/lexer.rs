@@ -2,9 +2,9 @@ use std::str::Chars;
 
 #[derive(PartialEq, Debug)]
 pub struct ExtendedToken {
-    token: Token,
-    index: usize,
-    len: usize,
+    pub token: Token,
+    pub index: usize,
+    pub len: usize,
 }
 
 impl ExtendedToken {
@@ -19,16 +19,6 @@ pub enum Token {
     RParen,
     Quote,
     Integer(i64),
-    Add,
-    Sub,
-    Multi,
-    Div,
-    Eq,
-    Not,
-    Gt,
-    Lt,
-    Ge,
-    Le,
     Keyword(String),
 }
 
@@ -93,57 +83,57 @@ impl <'a> Lexer<'a> {
                 tokens.push(ExtendedToken::new(Token::Quote, pos_before_consume, 1));
             }
             else if c == '+' {
-                tokens.push(ExtendedToken::new(Token::Add, pos_before_consume, 1));
+                tokens.push(ExtendedToken::new(Token::Keyword(String::from("+")), pos_before_consume, 1));
             }
             else if c == '-' {
-                tokens.push(ExtendedToken::new(Token::Sub, pos_before_consume, 1));
+                tokens.push(ExtendedToken::new(Token::Keyword(String::from("-")), pos_before_consume, 1));
             }
             else if c == '*' {
-                tokens.push(ExtendedToken::new(Token::Multi, pos_before_consume, 1));
+                tokens.push(ExtendedToken::new(Token::Keyword(String::from("*")), pos_before_consume, 1));
             }
             else if c == '/' {
                 if let Some(c) = self.ctx.next() {
                     if c == '=' {
-                        tokens.push(ExtendedToken::new(Token::Not, pos_before_consume, 2));
+                        tokens.push(ExtendedToken::new(Token::Keyword(String::from("/=")), pos_before_consume, 2));
                     }
                     else {
-                        tokens.push(ExtendedToken::new(Token::Div, pos_before_consume, 1));
+                        tokens.push(ExtendedToken::new(Token::Keyword(String::from("/")), pos_before_consume, 1));
                         self.ctx.return_char(c);
                     }
                 }
                 else {
-                    tokens.push(ExtendedToken::new(Token::Div, pos_before_consume, 1));
+                    tokens.push(ExtendedToken::new(Token::Keyword(String::from("/")), pos_before_consume, 1));
                 }
             }
             else if c == '=' {
-                tokens.push(ExtendedToken::new(Token::Eq, pos_before_consume, 1));
+                tokens.push(ExtendedToken::new(Token::Keyword(String::from("=")), pos_before_consume, 1));
             }
             else if c == '>' {
                 if let Some(c) = self.ctx.next() {
                     if c == '=' {
-                        tokens.push(ExtendedToken::new(Token::Ge, pos_before_consume, 2));
+                        tokens.push(ExtendedToken::new(Token::Keyword(String::from(">=")), pos_before_consume, 2));
                     }
                     else {
-                        tokens.push(ExtendedToken::new(Token::Gt, pos_before_consume, 1));
+                        tokens.push(ExtendedToken::new(Token::Keyword(String::from(">")), pos_before_consume, 1));
                         self.ctx.return_char(c);
                     }
                 }
                 else {
-                    tokens.push(ExtendedToken::new(Token::Gt, pos_before_consume, 1));
+                    tokens.push(ExtendedToken::new(Token::Keyword(String::from(">")), pos_before_consume, 1));
                 }
             }
             else if c == '<' {
                 if let Some(c) = self.ctx.next() {
                     if c == '=' {
-                        tokens.push(ExtendedToken::new(Token::Le, pos_before_consume, 2));
+                        tokens.push(ExtendedToken::new(Token::Keyword(String::from("<=")), pos_before_consume, 2));
                     }
                     else {
-                        tokens.push(ExtendedToken::new(Token::Lt, pos_before_consume, 1));
+                        tokens.push(ExtendedToken::new(Token::Keyword(String::from("<")), pos_before_consume, 1));
                         self.ctx.return_char(c);
                     }
                 }
                 else {
-                    tokens.push(ExtendedToken::new(Token::Lt, pos_before_consume, 1));
+                    tokens.push(ExtendedToken::new(Token::Keyword(String::from("<")), pos_before_consume, 1));
                 }
             }
             else if c.is_alphanumeric() {
@@ -217,43 +207,43 @@ mod tests {
             Lexer::new("defun").tokenize());
 
         assert_eq!(
-            vec!(ExtendedToken::new(Token::Add, 0, 1)),
+            vec!(ExtendedToken::new(Token::Keyword(String::from("+")), 0, 1)),
             Lexer::new("+").tokenize());
 
         assert_eq!(
-            vec!(ExtendedToken::new(Token::Sub, 0, 1)),
+            vec!(ExtendedToken::new(Token::Keyword(String::from("-")), 0, 1)),
             Lexer::new("-").tokenize());
 
         assert_eq!(
-            vec!(ExtendedToken::new(Token::Multi, 0, 1)),
+            vec!(ExtendedToken::new(Token::Keyword(String::from("*")), 0, 1)),
             Lexer::new("*").tokenize());
 
         assert_eq!(
-            vec!(ExtendedToken::new(Token::Div, 0, 1)),
+            vec!(ExtendedToken::new(Token::Keyword(String::from("/")), 0, 1)),
             Lexer::new("/").tokenize());
 
         assert_eq!(
-            vec!(ExtendedToken::new(Token::Eq, 0, 1)),
+            vec!(ExtendedToken::new(Token::Keyword(String::from("=")), 0, 1)),
             Lexer::new("=").tokenize());
 
         assert_eq!(
-            vec!(ExtendedToken::new(Token::Not, 0, 2)),
+            vec!(ExtendedToken::new(Token::Keyword(String::from("/=")), 0, 2)),
             Lexer::new("/=").tokenize());
 
         assert_eq!(
-            vec!(ExtendedToken::new(Token::Gt, 0, 1)),
+            vec!(ExtendedToken::new(Token::Keyword(String::from(">")), 0, 1)),
             Lexer::new(">").tokenize());
 
         assert_eq!(
-            vec!(ExtendedToken::new(Token::Ge, 0, 2)),
+            vec!(ExtendedToken::new(Token::Keyword(String::from(">=")), 0, 2)),
             Lexer::new(">=").tokenize());
 
         assert_eq!(
-            vec!(ExtendedToken::new(Token::Lt, 0, 1)),
+            vec!(ExtendedToken::new(Token::Keyword(String::from("<")), 0, 1)),
             Lexer::new("<").tokenize());
 
         assert_eq!(
-            vec!(ExtendedToken::new(Token::Le, 0, 2)),
+            vec!(ExtendedToken::new(Token::Keyword(String::from("<=")), 0, 2)),
             Lexer::new("<=").tokenize());
     }
 }
