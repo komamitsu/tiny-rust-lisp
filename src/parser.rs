@@ -1,7 +1,7 @@
 use lexer::*;
 
-#[derive(PartialEq, Debug)]
-enum Node {
+#[derive(PartialEq, Debug, Clone)]
+pub enum Node {
     Integer(i64),
     Keyword(String),
     List(Vec<Node>),
