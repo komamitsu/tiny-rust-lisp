@@ -5,6 +5,7 @@ pub enum Node {
     Integer(i64),
     Keyword(String),
     List(Vec<Node>),
+    Quote(Vec<Node>),
 }
 
 #[derive(Debug)]
@@ -35,7 +36,7 @@ impl Parser {
                 Token::RParen => None,
                 Token::Integer(i) => Some(Node::Integer(i)),
                 Token::Keyword(s) => Some(Node::Keyword(s)),
-                Token::Quote => self.parse(),
+                Token::Quote => Some(Node::Quote(self.parse_list())),
             }
         }
     }

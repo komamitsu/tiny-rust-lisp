@@ -29,6 +29,20 @@ impl Eval {
         ).unwrap_or(0))
     }
 
+    fn car(&self, args: &[Node], node: &Node) -> Node {
+        if args.len() == 1 {
+            if let &Node::Quote(ref xs) = &args[0] {
+                return match xs.split_first() {
+                    // TODO: Don't copy
+                    Some((hd, _)) => hd.clone(),
+                    None => Node::List(vec![])
+                }
+            }
+        }
+
+        panic!("`car` takes only a quoted list, but got {:?}", args);
+    }
+
     pub fn eval(&self, node: Node) -> Node {
         match node {
             Node::Integer(_) => node,
@@ -42,11 +56,13 @@ impl Eval {
                             "-" => self.calc_integer(&|a, i| a - i, tl, &node),
                             "*" => self.calc_integer(&|a, i| a * i, tl, &node),
                             "/" => self.calc_integer(&|a, i| a / i, tl, &node),
+                            "car" => self.car(tl, &node),
                             _ => panic!("Unexpected node: {:?}", node),
                         },
                     _ => panic!("Unexpected node: {:?}", node),
                 }
-            }
+            },
+            Node::Quote(x) => Node::List(x),
         }
     }
 }
@@ -83,6 +99,24 @@ mod tests {
                                 Node::Keyword(String::from("-")),
                                 Node::Integer(42),
                                 Node::Integer(35),
+                            ]
+                        ),
+                    ]
+                )
+            )
+        );
+
+        assert_eq!(
+            Node::Integer(42),
+            Eval::new().eval(
+                Node::List(
+                    vec![
+                        Node::Keyword(String::from("car")),
+                        Node::Quote(
+                            vec![
+                                Node::Integer(42),
+                                Node::Integer(-123),
+                                Node::Integer(0),
                             ]
                         ),
                     ]
