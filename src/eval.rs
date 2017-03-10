@@ -31,10 +31,24 @@ impl Eval {
 
     fn car(&self, args: &[Node], node: &Node) -> Node {
         if args.len() == 1 {
-            if let &Node::Quote(ref xs) = &args[0] {
+            if let &Node::QuotedList(ref xs) = &args[0] {
                 return match xs.split_first() {
                     // TODO: Don't copy
                     Some((hd, _)) => hd.clone(),
+                    None => Node::List(vec![])
+                }
+            }
+        }
+
+        panic!("`car` takes only a quoted list, but got {:?}", args);
+    }
+
+    fn cdr(&self, args: &[Node], node: &Node) -> Node {
+        if args.len() == 1 {
+            if let &Node::QuotedList(ref xs) = &args[0] {
+                return match xs.split_first() {
+                    // TODO: Don't copy
+                    Some((_, tl)) => Node::QuotedList(tl.to_vec()),
                     None => Node::List(vec![])
                 }
             }
@@ -57,12 +71,13 @@ impl Eval {
                             "*" => self.calc_integer(&|a, i| a * i, tl, &node),
                             "/" => self.calc_integer(&|a, i| a / i, tl, &node),
                             "car" => self.car(tl, &node),
+                            "cdr" => self.cdr(tl, &node),
                             _ => panic!("Unexpected node: {:?}", node),
                         },
                     _ => panic!("Unexpected node: {:?}", node),
                 }
             },
-            Node::Quote(x) => Node::List(x),
+            Node::QuotedList(x) => Node::List(x),
         }
     }
 }
@@ -112,11 +127,34 @@ mod tests {
                 Node::List(
                     vec![
                         Node::Keyword(String::from("car")),
-                        Node::Quote(
+                        Node::QuotedList(
                             vec![
                                 Node::Integer(42),
                                 Node::Integer(-123),
                                 Node::Integer(0),
+                            ]
+                        ),
+                    ]
+                )
+            )
+        );
+
+        assert_eq!(
+            Node::QuotedList(
+                vec![
+                    Node::Integer(4),
+                    Node::Integer(2),
+                ]
+            ),
+            Eval::new().eval(
+                Node::List(
+                    vec![
+                        Node::Keyword(String::from("cdr")),
+                        Node::QuotedList(
+                            vec![
+                                Node::Integer(0),
+                                Node::Integer(4),
+                                Node::Integer(2),
                             ]
                         ),
                     ]
