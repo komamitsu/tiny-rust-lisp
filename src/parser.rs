@@ -7,10 +7,12 @@ pub enum Node {
     List(Vec<Node>),
     QuotedList(Vec<Node>),
     Func(Vec<String>, Vec<Node>),
+    True,
+    False,
 }
 
 #[derive(Debug)]
-struct Parser {
+pub struct Parser {
     tokens: Vec<ExtendedToken>
 }
 

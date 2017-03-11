@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use parser::Node;
 
-struct Eval;
+pub struct Eval;
 
 // TODO: Reduce memory copy...
 impl Eval {
@@ -21,6 +21,44 @@ impl Eval {
                 _ => panic!("{:?} takes only an integer, but got {:?}", node, x)
             }
         ).unwrap_or(0))
+    }
+
+    fn cond<F>(&self, env: &mut HashMap<String, Node>, f: &F, args: &[Node], node: &Node) -> Node
+        where F: Fn(i64, i64) -> bool {
+
+        let result = args.iter().fold(None, |a, x| match &self.eval(env, x.clone()) {
+            &Node::Integer(i) => match a {
+                Some((result, prev)) => Some((result && f(prev, i), i)),
+                None => Some((true, i))
+            },
+            _ => panic!("{:?} takes only an integer, but got {:?}", node, x)
+        }).unwrap();
+
+        if result.0 {
+            Node::True
+        }
+        else {
+            Node::False
+        }
+    }
+
+    fn if_then_else(&self, env: &mut HashMap<String, Node>, args: &[Node], node: &Node) -> Node {
+        if args.len() >= 2 && args.len() < 4 {
+            return match &self.eval(env, args[0].clone()) {
+                &Node::True => self.eval(env, args[1].clone()),
+                &Node::False => {
+                    if args.len() == 3 {
+                        self.eval(env, args[2].clone())
+                    }
+                    else {
+                        Node::List(Vec::new())
+                    }
+                },
+                _ => panic!("The 1st parameter of `if` should be boolean, but got {:?}", args)
+            }
+        }
+
+        panic!("`if` takes 2 or 3 arguments, but got {:?}", args);
     }
 
     fn car(&self, env: &mut HashMap<String, Node>, args: &[Node], node: &Node) -> Node {
@@ -133,6 +171,13 @@ impl Eval {
                             "-" => self.calc_integer(env, &|a, i| a - i, tl, &node),
                             "*" => self.calc_integer(env, &|a, i| a * i, tl, &node),
                             "/" => self.calc_integer(env, &|a, i| a / i, tl, &node),
+                            "=" => self.cond(env, &|a, i| a == i, tl, &node),
+                            ">" => self.cond(env, &|a, i| a > i, tl, &node),
+                            ">=" => self.cond(env, &|a, i| a >= i, tl, &node),
+                            "<" => self.cond(env, &|a, i| a < i, tl, &node),
+                            "<=" => self.cond(env, &|a, i| a <= i, tl, &node),
+                            "/=" => self.cond(env, &|a, i| a != i, tl, &node),
+                            "if" => self.if_then_else(env, tl, &node),
                             "car" => self.car(env, tl, &node),
                             "cdr" => self.cdr(env, tl, &node),
                             "setq" => self.setq(env, tl, &node),
@@ -149,7 +194,7 @@ impl Eval {
                 }
             },
             Node::QuotedList(x) => Node::List(x),
-            Node::Func(_, _) => node,
+            _ => node,
         }
     }
 }
