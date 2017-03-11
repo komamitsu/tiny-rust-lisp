@@ -12,26 +12,10 @@ impl Eval {
         where F: Fn(i64, i64) -> i64 {
 
         Node::Integer(
-            args.iter().fold(None, |a, x| match x {
+            args.iter().fold(None, |a, x| match &self.eval(env, x.clone()) {
                 &Node::Integer(i) => match a {
                     Some(aa) => Some(f(aa, i)),
                     None => Some(i)
-                },
-                // TODO: Don't copy
-                &Node::List(_) => match &self.eval(env, x.clone()) {
-                    &Node::Integer(i) => match a {
-                        Some(aa) => Some(f(aa, i)),
-                        None => Some(i)
-                    },
-                    _ => panic!("{:?} takes only an integer, but got {:?}", node, x),
-                },
-                // TODO: Don't copy
-                &Node::Keyword(_) => match &self.eval(env, x.clone()) {
-                    &Node::Integer(i) => match a {
-                        Some(aa) => Some(f(aa, i)),
-                        None => Some(i)
-                    },
-                    _ => panic!("{:?} takes only an integer, but got {:?}", node, x),
                 },
                 _ => panic!("{:?} takes only an integer, but got {:?}", node, x)
             }
@@ -89,6 +73,7 @@ impl Eval {
 
         panic!("`setq` takes only key value pairs, but got {:?}", args);
     }
+
     pub fn eval(&self, env: &mut HashMap<String, Node>, node: Node) -> Node {
         match node {
             Node::Integer(_) => node,
