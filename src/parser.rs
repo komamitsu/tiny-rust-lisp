@@ -6,6 +6,7 @@ pub enum Node {
     Keyword(String),
     List(Vec<Node>),
     QuotedList(Vec<Node>),
+    Func(Vec<String>, Vec<Node>),
 }
 
 #[derive(Debug)]
