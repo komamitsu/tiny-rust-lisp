@@ -44,10 +44,10 @@ mod tests {
             Eval::new().eval(&mut env, nodes);
         }
         {
-            let tokens = Lexer::new("(fib 6)").tokenize();
+            let tokens = Lexer::new("(fib 7)").tokenize();
             let nodes = Parser::new(tokens).parse().unwrap();
             assert_eq!(
-                Node::Integer(8),
+                Node::Integer(21),
                 Eval::new().eval(&mut env, nodes)
             );
         }

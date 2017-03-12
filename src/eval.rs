@@ -134,7 +134,8 @@ impl Eval {
                 let cloned_env = env.clone();
                 let saved_env_kvs = xs.iter().map(|k| (k, cloned_env.get(k))).collect::<Vec<(&String, Option<&Node>)>>();
                 for (i, x) in xs.iter().enumerate() {
-                    env.insert(x.clone(), args[i].clone());
+                    let evaled_arg = self.eval(env, args[i].clone());
+                    env.insert(x.clone(), evaled_arg);
                 }
                 // Dynamic scope not lexical scope
                 let result = self.eval(env, Node::List(body.clone()));
@@ -159,13 +160,15 @@ impl Eval {
             Node::Integer(_) => node,
             Node::Keyword(kwd) => {
                 let cloned_env = env.clone();
-                let x = cloned_env.get(&kwd).unwrap();
-                self.eval(env, x.clone())
-            }
+                match cloned_env.get(&kwd) {
+                    Some(x) => self.eval(env, x.clone()),
+                    None => Node::Keyword(kwd),
+                }
+            },
             Node::List(ref xs) => {
                 let (hd, tl) = xs.split_first().unwrap();
                 match hd {
-                    &Node::Keyword(ref kwd) => 
+                    &Node::Keyword(ref kwd) => {
                         match kwd.as_str() {
                             "+" => self.calc_integer(env, &|a, i| a + i, tl, &node),
                             "-" => self.calc_integer(env, &|a, i| a - i, tl, &node),
@@ -185,11 +188,12 @@ impl Eval {
                             _ =>  {
                                 let cloned_env = env.clone();
                                 match cloned_env.get(kwd) {
-                                    Some(f) => self.call(env, tl, &f),
+                                    Some(f) => self.call(env, &tl, &f),
                                     None => panic!("Unknown keyword: {:?}", kwd)
                                 }
                             }
-                        },
+                        }
+                    },
                     _ => panic!("Unexpected node: {:?}", node),
                 }
             },
@@ -328,7 +332,6 @@ mod tests {
                 ]
             )
         );
-        println!("add is {:?}", env1.get("add"));
 
         assert_eq!(
             Node::Integer(42),
@@ -345,3 +348,4 @@ mod tests {
         );
     }
 }
+
