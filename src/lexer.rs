@@ -29,6 +29,9 @@ struct Context<'a> {
     index: usize,
 }
 
+#[derive(Debug)]
+pub struct LexerError(String);
+
 impl <'a> Context<'a> {
     pub fn new(s: &'a str) -> Self {
         Context { cs: s.chars(), read_ahead: String::new(), index: 0 }
@@ -67,7 +70,7 @@ impl <'a> Lexer<'a> {
         Lexer { ctx: Context::new(input) }
     }
 
-    pub fn tokenize(&mut self) -> Vec<ExtendedToken> {
+    pub fn tokenize(&mut self) -> Result<Vec<ExtendedToken>, LexerError> {
         let mut tokens = Vec::new();
         while let Some(c) = self.ctx.next() {
             let pos_before_consume = self.ctx.pos() - 1;
@@ -157,10 +160,10 @@ impl <'a> Lexer<'a> {
                 }
             }
             else {
-                panic!("Unexpected charactor: [{}] ({:?})", c, self.ctx);
+                return Err(LexerError(format!("Unexpected charactor: [{}] ({:?})", c, self.ctx)));
             }
         }
-        tokens
+        Ok(tokens)
     }
 }
 
@@ -172,27 +175,27 @@ mod tests {
     fn tokenize() {
         assert_eq!(
             vec!(ExtendedToken::new(Token::LParen, 0, 1)),
-            Lexer::new("(").tokenize());
+            Lexer::new("(").tokenize().unwrap());
 
         assert_eq!(
             vec!(ExtendedToken::new(Token::LParen, 2, 1)),
-            Lexer::new("  (   ").tokenize());
+            Lexer::new("  (   ").tokenize().unwrap());
 
         assert_eq!(
             vec!(ExtendedToken::new(Token::RParen, 0, 1)),
-            Lexer::new(")").tokenize());
+            Lexer::new(")").tokenize().unwrap());
 
         assert_eq!(
             vec!(ExtendedToken::new(Token::RParen, 2, 1)),
-            Lexer::new("  )   ").tokenize());
+            Lexer::new("  )   ").tokenize().unwrap());
 
         assert_eq!(
             vec!(ExtendedToken::new(Token::Quote, 0, 1)),
-            Lexer::new("'").tokenize());
+            Lexer::new("'").tokenize().unwrap());
 
         assert_eq!(
             vec!(ExtendedToken::new(Token::Integer(1234), 0, 4)),
-            Lexer::new("1234").tokenize());
+            Lexer::new("1234").tokenize().unwrap());
 
         assert_eq!(
             vec!(
@@ -200,50 +203,50 @@ mod tests {
                 ExtendedToken::new(Token::Integer(0), 1, 1),
                 ExtendedToken::new(Token::RParen, 2, 1)
             ),
-            Lexer::new("(0)").tokenize());
+            Lexer::new("(0)").tokenize().unwrap());
 
         assert_eq!(
             vec!(ExtendedToken::new(Token::Keyword(String::from("defun")), 0, 5)),
-            Lexer::new("defun").tokenize());
+            Lexer::new("defun").tokenize().unwrap());
 
         assert_eq!(
             vec!(ExtendedToken::new(Token::Keyword(String::from("+")), 0, 1)),
-            Lexer::new("+").tokenize());
+            Lexer::new("+").tokenize().unwrap());
 
         assert_eq!(
             vec!(ExtendedToken::new(Token::Keyword(String::from("-")), 0, 1)),
-            Lexer::new("-").tokenize());
+            Lexer::new("-").tokenize().unwrap());
 
         assert_eq!(
             vec!(ExtendedToken::new(Token::Keyword(String::from("*")), 0, 1)),
-            Lexer::new("*").tokenize());
+            Lexer::new("*").tokenize().unwrap());
 
         assert_eq!(
             vec!(ExtendedToken::new(Token::Keyword(String::from("/")), 0, 1)),
-            Lexer::new("/").tokenize());
+            Lexer::new("/").tokenize().unwrap());
 
         assert_eq!(
             vec!(ExtendedToken::new(Token::Keyword(String::from("=")), 0, 1)),
-            Lexer::new("=").tokenize());
+            Lexer::new("=").tokenize().unwrap());
 
         assert_eq!(
             vec!(ExtendedToken::new(Token::Keyword(String::from("/=")), 0, 2)),
-            Lexer::new("/=").tokenize());
+            Lexer::new("/=").tokenize().unwrap());
 
         assert_eq!(
             vec!(ExtendedToken::new(Token::Keyword(String::from(">")), 0, 1)),
-            Lexer::new(">").tokenize());
+            Lexer::new(">").tokenize().unwrap());
 
         assert_eq!(
             vec!(ExtendedToken::new(Token::Keyword(String::from(">=")), 0, 2)),
-            Lexer::new(">=").tokenize());
+            Lexer::new(">=").tokenize().unwrap());
 
         assert_eq!(
             vec!(ExtendedToken::new(Token::Keyword(String::from("<")), 0, 1)),
-            Lexer::new("<").tokenize());
+            Lexer::new("<").tokenize().unwrap());
 
         assert_eq!(
             vec!(ExtendedToken::new(Token::Keyword(String::from("<=")), 0, 2)),
-            Lexer::new("<=").tokenize());
+            Lexer::new("<=").tokenize().unwrap());
     }
 }
