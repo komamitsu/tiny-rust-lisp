@@ -14,21 +14,21 @@ mod tests {
     fn if_then_else() {
         {
             let mut env = HashMap::new();
-            let tokens = Lexer::new("(if (= 7 7) 42 99)").tokenize();
+            let tokens = Lexer::new("(if (= 7 7) 42 99)").tokenize().unwrap();
             let nodes = Parser::new(tokens).parse().unwrap();
             assert_eq!(
                 Node::Integer(42),
-                Eval::new().eval(&mut env, nodes)
+                Eval::new().eval(&mut env, nodes).unwrap()
             )
         }
 
         {
             let mut env = HashMap::new();
-            let tokens = Lexer::new("(if (= 7 13) 42 99)").tokenize();
+            let tokens = Lexer::new("(if (= 7 13) 42 99)").tokenize().unwrap();
             let nodes = Parser::new(tokens).parse().unwrap();
             assert_eq!(
                 Node::Integer(99),
-                Eval::new().eval(&mut env, nodes)
+                Eval::new().eval(&mut env, nodes).unwrap()
             )
         }
     }
@@ -39,16 +39,16 @@ mod tests {
         {
             let tokens = Lexer::new(
                 "(setq fib (lambda (n) (if (= n 1) 1 (if (= n 0) 1 (+ (fib (- n 1)) (fib (- n 2)))))))").
-                tokenize();
+                tokenize().unwrap();
             let nodes = Parser::new(tokens).parse().unwrap();
-            Eval::new().eval(&mut env, nodes);
+            Eval::new().eval(&mut env, nodes).unwrap();
         }
         {
-            let tokens = Lexer::new("(fib 7)").tokenize();
+            let tokens = Lexer::new("(fib 7)").tokenize().unwrap();
             let nodes = Parser::new(tokens).parse().unwrap();
             assert_eq!(
                 Node::Integer(21),
-                Eval::new().eval(&mut env, nodes)
+                Eval::new().eval(&mut env, nodes).unwrap()
             );
         }
     }
