@@ -1,14 +1,58 @@
-mod lexer;
-mod parser;
-mod eval;
+pub mod lexer;
+pub mod parser;
+pub mod eval;
+
+use std::collections::HashMap;
+use lexer::{Lexer, LexerError};
+use parser::{Node, Parser};
+use eval::{Eval, EvalError};
+
+#[derive(Debug)]
+pub enum LispError {
+    Lexer(LexerError),
+    Eval(EvalError),
+    EOF,
+}
+
+impl From<LexerError> for LispError {
+    fn from(err: LexerError) -> Self {
+        LispError::Lexer(err)
+    }
+}
+
+impl From<EvalError> for LispError {
+    fn from(err: EvalError) -> Self {
+        LispError::Eval(err)
+    }
+}
+
+pub struct Lisp {
+    eval: Eval,
+    env: HashMap<String, Node>
+}
+
+impl Lisp {
+    pub fn new() -> Self {
+        Lisp {
+            eval: Eval::new(),
+            env: HashMap::new(),
+        }
+    }
+
+    pub fn eval_line(&self, line: &str) -> Result<Node, LispError> {
+        let tokens = try!(Lexer::new(line).tokenize());
+        // TODO
+        let mut env = HashMap::new();
+        match Parser::new(tokens).parse() {
+            Some(nodes) => Ok(try!(Eval::new().eval(&mut env, nodes))),
+            None => Err(LispError::EOF),
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
-    use lexer::Lexer;
-    use parser::{Node, Parser};
-    use eval::Eval;
+    use super::*;
 
     #[test]
     fn if_then_else() {
