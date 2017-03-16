@@ -206,6 +206,15 @@ mod tests {
             Lexer::new("(0)").tokenize().unwrap());
 
         assert_eq!(
+            vec!(
+                ExtendedToken::new(Token::Quote , 0, 1),
+                ExtendedToken::new(Token::LParen, 1, 1),
+                ExtendedToken::new(Token::Integer(0), 2, 1),
+                ExtendedToken::new(Token::RParen, 3, 1)
+            ),
+            Lexer::new("'(0)").tokenize().unwrap());
+
+        assert_eq!(
             vec!(ExtendedToken::new(Token::Keyword(String::from("defun")), 0, 5)),
             Lexer::new("defun").tokenize().unwrap());
 

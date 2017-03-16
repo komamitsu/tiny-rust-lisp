@@ -39,7 +39,7 @@ impl Parser {
                 Token::RParen => None,
                 Token::Integer(i) => Some(Node::Integer(i)),
                 Token::Keyword(s) => Some(Node::Keyword(s)),
-                Token::Quote => Some(Node::QuotedList(self.parse_list())),
+                Token::Quote => self.parse_quoted_list(),
             }
         }
     }
@@ -51,6 +51,24 @@ impl Parser {
         }
         list
     }
+
+    fn parse_quoted_list(&mut self) -> Option<Node> {
+        match self.next_token() {
+            // Check EOF
+            None => None,
+            Some(token) => match token.token {
+                Token::LParen => {
+                    let mut list = Vec::new();
+                    while let Some(node) = self.parse() {
+                        list.push(node)
+                    }
+                    Some(Node::QuotedList(list))
+                },
+                // TODO
+                _ => None
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -59,7 +77,7 @@ mod tests {
     use super::{Node, Parser};
 
     #[test]
-    fn parse() {
+    fn parse0() {
         let tokens = vec![
             ExtendedToken {
                 token: Token::LParen, index: 0, len: 1
@@ -100,6 +118,28 @@ mod tests {
                             Node::Integer(5),
                             Node::Integer(2),
                         ])]),
+            Parser::new(tokens).parse().unwrap()
+        );
+    }
+
+    #[test]
+    fn parse1() {
+        let tokens = vec![
+            ExtendedToken {
+                token: Token::Quote, index: 0, len: 1
+            },
+            ExtendedToken {
+                token: Token::LParen, index: 1, len: 1
+            },
+            ExtendedToken {
+                token: Token::Integer(1), index: 2, len: 1
+            },
+            ExtendedToken {
+                token: Token::RParen, index: 3, len: 1
+            },
+        ];
+        assert_eq!(
+            Node::QuotedList(vec![Node::Integer(1)]),
             Parser::new(tokens).parse().unwrap()
         );
     }
