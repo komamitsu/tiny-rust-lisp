@@ -224,11 +224,11 @@ impl Eval {
         match node {
             Node::Integer(_) => Ok(node),
             Node::Keyword(kwd) => {
-                let cloned_env = env.clone();
-                Ok(match cloned_env.get(&kwd) {
-                    Some(x) => try!(self.eval(env, x.clone())),
-                    None => Node::Keyword(kwd),
-                })
+                let nd = match env.get(&kwd) {
+                    Some(x) => x.clone(),
+                    None => return Ok(Node::Keyword(kwd)),
+                };
+                self.eval(env, nd)
             },
             Node::List(ref xs) => self.eval_func(env, &node, xs),
             Node::QuotedList(x) => Ok(Node::List(x)),
@@ -239,30 +239,30 @@ impl Eval {
     fn eval_func(&self, env: &mut HashMap<String, Node>, node: &Node, xs: &Vec<Node>) -> Result<Node, EvalError> {
         let (hd, tl) = xs.split_first().unwrap();
         if let &Node::Keyword(ref kwd) = hd {
-            Ok(match kwd.as_str() {
-                "+" => try!(self.calc_integer(env, &|a, i| a + i, tl, node)),
-                "-" => try!(self.calc_integer(env, &|a, i| a - i, tl, node)),
-                "*" => try!(self.calc_integer(env, &|a, i| a * i, tl, node)),
-                "/" => try!(self.calc_integer(env, &|a, i| a / i, tl, node)),
-                "=" => try!(self.cond(env, &|a, i| a == i, tl, node)),
-                ">" => try!(self.cond(env, &|a, i| a > i, tl, node)),
-                ">=" => try!(self.cond(env, &|a, i| a >= i, tl, node)),
-                "<" => try!(self.cond(env, &|a, i| a < i, tl, node)),
-                "<=" => try!(self.cond(env, &|a, i| a <= i, tl, node)),
-                "/=" => try!(self.cond(env, &|a, i| a != i, tl, node)),
-                "if" => try!(self.if_then_else(env, tl, node)),
-                "car" => try!(self.car(env, tl, node)),
-                "cdr" => try!(self.cdr(env, tl, node)),
-                "setq" => try!(self.setq(env, tl, node)),
-                "lambda" => try!(self.lambda(env, tl, node)),
+            match kwd.as_str() {
+                "+" => self.calc_integer(env, &|a, i| a + i, tl, node),
+                "-" => self.calc_integer(env, &|a, i| a - i, tl, node),
+                "*" => self.calc_integer(env, &|a, i| a * i, tl, node),
+                "/" => self.calc_integer(env, &|a, i| a / i, tl, node),
+                "=" => self.cond(env, &|a, i| a == i, tl, node),
+                ">" => self.cond(env, &|a, i| a > i, tl, node),
+                ">=" => self.cond(env, &|a, i| a >= i, tl, node),
+                "<" => self.cond(env, &|a, i| a < i, tl, node),
+                "<=" => self.cond(env, &|a, i| a <= i, tl, node),
+                "/=" => self.cond(env, &|a, i| a != i, tl, node),
+                "if" => self.if_then_else(env, tl, node),
+                "car" => self.car(env, tl, node),
+                "cdr" => self.cdr(env, tl, node),
+                "setq" => self.setq(env, tl, node),
+                "lambda" => self.lambda(env, tl, node),
                 _ =>  {
-                    let cloned_env = env.clone();
-                    match cloned_env.get(kwd) {
-                        Some(f) => try!(self.call(env, &tl, &f)),
+                    let f = match env.get(kwd) {
+                        Some(f) => f.clone(),
                         None => return Err(EvalError(format!("Unknown keyword: {:?}", kwd)))
-                    }
+                    };
+                    self.call(env, &tl, &f)
                 }
-            })
+            }
         }
         else {
             Err(EvalError(format!("Unexpected node: {:?}", node)))
