@@ -2,6 +2,7 @@ pub mod lexer;
 pub mod parser;
 pub mod eval;
 
+use std::rc::Rc;
 use lexer::{Lexer, LexerError};
 use parser::{Node, Parser};
 use eval::{Env, Eval, EvalError};
@@ -43,7 +44,10 @@ impl Lisp {
         // TODO
         let mut env = Env::new();
         match Parser::new(tokens).parse() {
-            Some(nodes) => Ok(try!(Eval::new().eval(&mut env, nodes))),
+            Some(nodes) => Ok({
+                let nd : Rc<Node> = try!(Eval::new().eval(&mut env, nodes));
+                (*nd.clone()).clone()
+            }),
             None => Err(LispError::EOF),
         }
     }
