@@ -2,10 +2,9 @@ pub mod lexer;
 pub mod parser;
 pub mod eval;
 
-use std::collections::HashMap;
 use lexer::{Lexer, LexerError};
 use parser::{Node, Parser};
-use eval::{Eval, EvalError};
+use eval::{Env, Eval, EvalError};
 
 #[derive(Debug)]
 pub enum LispError {
@@ -28,21 +27,21 @@ impl From<EvalError> for LispError {
 
 pub struct Lisp {
     eval: Eval,
-    env: HashMap<String, Node>
+    env: Env
 }
 
 impl Lisp {
     pub fn new() -> Self {
         Lisp {
             eval: Eval::new(),
-            env: HashMap::new(),
+            env: Env::new(),
         }
     }
 
     pub fn eval_line(&self, line: &str) -> Result<Node, LispError> {
         let tokens = try!(Lexer::new(line).tokenize());
         // TODO
-        let mut env = HashMap::new();
+        let mut env = Env::new();
         match Parser::new(tokens).parse() {
             Some(nodes) => Ok(try!(Eval::new().eval(&mut env, nodes))),
             None => Err(LispError::EOF),
@@ -57,7 +56,7 @@ mod tests {
     #[test]
     fn if_then_else() {
         {
-            let mut env = HashMap::new();
+            let mut env = Env::new();
             let tokens = Lexer::new("(if (= 7 7) 42 99)").tokenize().unwrap();
             let nodes = Parser::new(tokens).parse().unwrap();
             assert_eq!(
@@ -67,7 +66,7 @@ mod tests {
         }
 
         {
-            let mut env = HashMap::new();
+            let mut env = Env::new();
             let tokens = Lexer::new("(if (= 7 13) 42 99)").tokenize().unwrap();
             let nodes = Parser::new(tokens).parse().unwrap();
             assert_eq!(
@@ -79,7 +78,7 @@ mod tests {
 
     #[test]
     fn fib() {
-        let mut env = HashMap::new();
+        let mut env = Env::new();
         {
             let tokens = Lexer::new(
                 "(setq fib (lambda (n) (if (= n 1) 1 (if (= n 0) 1 (+ (fib (- n 1)) (fib (- n 2)))))))").
