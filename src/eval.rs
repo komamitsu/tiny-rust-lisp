@@ -1,11 +1,66 @@
 use std::collections::HashMap;
 use std::iter::Map;
+use std::rc::Rc;
 use parser::Node;
 
 #[derive(Debug, Clone)]
 pub struct EvalError(String);
 
 pub struct Eval;
+
+#[derive(Debug, Clone)]
+pub struct Env {
+    envs: Vec<HashMap<String, Rc<Node>>>
+}
+
+impl Env {
+    pub fn new() -> Self {
+        Env {
+            envs: vec![HashMap::new()]
+        }
+    }
+
+    pub fn new_with_map(map: HashMap<String, Node>) -> Self {
+        Env {
+            envs: vec![map.iter().map(|(k, v)| (k.clone(), Rc::new(v.clone()))).collect::<HashMap<String, Rc<Node>>>()]
+        }
+    }
+
+    pub fn get(&self, key: &String) -> Option<Rc<Node>> {
+        for env in &self.envs {
+            if let Some(v) = env.get(key) {
+                return Some(v.clone())
+            }
+        }
+        None
+    }
+
+    pub fn insert(&mut self, k: String, v: Rc<Node>) -> Option<Rc<Node>> {
+        if self.envs.is_empty() {
+            panic!("Env#insert shouldn't be called for empty `envs`");
+        }
+        let len = self.envs.len();
+        let env = &mut self.envs[len - 1];
+        env.insert(k, v)
+    }
+
+    pub fn remove(&mut self, k: &String) -> Option<Rc<Node>> {
+        if self.envs.is_empty() {
+            panic!("Env#remove shouldn't be called for empty `envs`");
+        }
+        let len = self.envs.len();
+        let env = &mut self.envs[len - 1];
+        env.remove(k)
+    }
+
+    pub fn push_env(&mut self) {
+        self.envs.push(HashMap::new());
+    }
+
+    pub fn pop_env(&mut self) {
+        self.envs.pop();
+    }
+}
 
 // TODO: Reduce memory copy...
 impl Eval {
@@ -14,7 +69,7 @@ impl Eval {
     }
 
     fn calc_integer<F>(&self,
-                       env: &mut HashMap<String, Node>,
+                       env: &mut Env,
                        f: &F,
                        args: &[Node], node: &Node) -> Result<Node, EvalError>
         where F: Fn(i64, i64) -> i64 {
@@ -44,7 +99,7 @@ impl Eval {
     }
 
     fn cond<F>(&self,
-               env: &mut HashMap<String, Node>,
+               env: &mut Env,
                f: &F,
                args: &[Node],
                node: &Node) -> Result<Node, EvalError>
@@ -75,7 +130,7 @@ impl Eval {
     }
 
     fn if_then_else(&self,
-                    env: &mut HashMap<String, Node>,
+                    env: &mut Env,
                     args: &[Node],
                     node: &Node) -> Result<Node, EvalError> {
 
@@ -98,7 +153,7 @@ impl Eval {
     }
 
     fn car(&self,
-           env: &mut HashMap<String, Node>,
+           env: &mut Env,
            args: &[Node],
            node: &Node) -> Result<Node, EvalError> {
 
@@ -115,7 +170,7 @@ impl Eval {
     }
 
     fn cdr(&self,
-           env: &mut HashMap<String, Node>,
+           env: &mut Env,
            args: &[Node],
            node: &Node) -> Result<Node, EvalError> {
 
@@ -132,7 +187,7 @@ impl Eval {
     }
 
     fn setq(&self,
-            env: &mut HashMap<String, Node>,
+            env: &mut Env,
             args: &[Node],
             node: &Node) -> Result<Node, EvalError> {
 
@@ -141,7 +196,7 @@ impl Eval {
             for arg in args {
                 if let Some(k) = key {
                     let evalated_node = try!(self.eval(env, arg.clone()));
-                    env.insert(k, evalated_node);
+                    env.insert(k, Rc::new(evalated_node));
                     key = None;
                 }
                 else {
@@ -159,7 +214,7 @@ impl Eval {
         Err(EvalError(format!("`setq` takes only key value pairs, but got {:?}", args)))
     }
 
-    fn lambda(&self, env: &mut HashMap<String, Node>, args: &[Node], node: &Node) -> Result<Node, EvalError> {
+    fn lambda(&self, env: &mut Env, args: &[Node], node: &Node) -> Result<Node, EvalError> {
         if args.len() == 2 {
             match (&args[0], &args[1]) {
                 (&Node::List(ref xs), &Node::List(ref body)) => {
@@ -188,18 +243,16 @@ impl Eval {
         Err(EvalError(format!("`lambda` takes only (name:keyword args:list body:list), but got {:?}", args)))
     }
 
-    fn call(&self, env: &mut HashMap<String, Node>, args: &[Node], node: &Node) -> Result<Node, EvalError> {
+    fn call(&self, env: &mut Env, args: &[Node], node: &Node) -> Result<Node, EvalError> {
         match node {
             &Node::Func(ref xs, ref body) => {
-                let cloned_env = env.clone();
-
                 let saved_env_kvs = xs.iter().
-                    map(|k| (k, cloned_env.get(k))).
-                    collect::<Vec<(&String, Option<&Node>)>>();
+                    map(|k| (k, env.get(k))).
+                    collect::<Vec<(&String, Option<Rc<Node>>)>>();
 
                 for (i, x) in xs.iter().enumerate() {
                     let evaled_arg = try!(self.eval(env, args[i].clone()));
-                    env.insert(x.clone(), evaled_arg);
+                    env.insert(x.clone(), Rc::new(evaled_arg));
                 }
 
                 // Dynamic scope, not lexical scope
@@ -220,15 +273,15 @@ impl Eval {
         Err(EvalError(format!("Failed to call a function due to unexpected arguments: node is {:?} and arguments are {:?}", node, args)))
     }
 
-    pub fn eval(&self, env: &mut HashMap<String, Node>, node: Node) -> Result<Node, EvalError> {
+    pub fn eval(&self, env: &mut Env, node: Node) -> Result<Node, EvalError> {
         match node {
             Node::Integer(_) => Ok(node),
             Node::Keyword(kwd) => {
                 let nd = match env.get(&kwd) {
-                    Some(x) => x.clone(),
+                    Some(x) => x,
                     None => return Ok(Node::Keyword(kwd)),
                 };
-                self.eval(env, nd)
+                self.eval(env, (*nd.clone()).clone())
             },
             Node::List(ref xs) => self.eval_func(env, &node, xs),
             Node::QuotedList(x) => Ok(Node::List(x)),
@@ -236,7 +289,7 @@ impl Eval {
         }
     }
 
-    fn eval_func(&self, env: &mut HashMap<String, Node>, node: &Node, xs: &Vec<Node>) -> Result<Node, EvalError> {
+    fn eval_func(&self, env: &mut Env, node: &Node, xs: &Vec<Node>) -> Result<Node, EvalError> {
         let (hd, tl) = xs.split_first().unwrap();
         if let &Node::Keyword(ref kwd) = hd {
             match kwd.as_str() {
@@ -272,16 +325,14 @@ impl Eval {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-    use super::Eval;
-    use parser::Node;
+    use super::*;
 
     #[test]
     fn eval() {
         assert_eq!(
             Node::Integer(42),
             Eval::new().eval(
-                &mut HashMap::new(),
+                &mut Env::new(),
                 Node::List(
                     vec![
                         Node::Keyword(String::from("+")),
@@ -295,7 +346,7 @@ mod tests {
         assert_eq!(
             Node::Integer(42),
             Eval::new().eval(
-                &mut HashMap::new(),
+                &mut Env::new(),
                 Node::List(
                     vec![
                         Node::Keyword(String::from("*")),
@@ -315,7 +366,7 @@ mod tests {
         assert_eq!(
             Node::Integer(42),
             Eval::new().eval(
-                &mut HashMap::new(),
+                &mut Env::new(),
                 Node::List(
                     vec![
                         Node::Keyword(String::from("car")),
@@ -339,7 +390,7 @@ mod tests {
                 ]
             ),
             Eval::new().eval(
-                &mut HashMap::new(),
+                &mut Env::new(),
                 Node::List(
                     vec![
                         Node::Keyword(String::from("cdr")),
@@ -355,8 +406,8 @@ mod tests {
             ).unwrap()
         );
 
-        let env0 = &mut HashMap::new();
-        env0.insert(String::from("x"), Node::Integer(40));
+        let env0 = &mut Env::new();
+        env0.insert(String::from("x"), Rc::new(Node::Integer(40)));
         assert_eq!(
             Node::Integer(42),
             Eval::new().eval(
@@ -371,7 +422,7 @@ mod tests {
             ).unwrap()
         );
 
-        let env1 = &mut HashMap::new();
+        let env1 = &mut Env::new();
         Eval::new().eval(
             env1,
             Node::List(
