@@ -39,13 +39,11 @@ impl Lisp {
         }
     }
 
-    pub fn eval_line(&self, line: &str) -> Result<Node, LispError> {
+    pub fn eval_line(&mut self, line: &str) -> Result<Node, LispError> {
         let tokens = try!(Lexer::new(line).tokenize());
-        // TODO
-        let mut env = Env::new();
         match Parser::new(tokens).parse() {
             Some(nodes) => Ok({
-                let nd : Rc<Node> = try!(Eval::new().eval(&mut env, nodes));
+                let nd : Rc<Node> = try!(self.eval.eval(&mut self.env, nodes));
                 (*nd.clone()).clone()
             }),
             None => Err(LispError::EOF),
@@ -95,6 +93,26 @@ mod tests {
             let nodes = Parser::new(tokens).parse().unwrap();
             assert_eq!(
                 Node::Integer(21),
+                *Eval::new().eval(&mut env, nodes).unwrap()
+            );
+        }
+    }
+
+    #[test]
+    fn recursive() {
+        let mut env = Env::new();
+        {
+            let tokens = Lexer::new(
+                "(setq rec (lambda (n x) (if (<= n 0) x (rec (- n 1) (* x 2)))))").
+                tokenize().unwrap();
+            let nodes = Parser::new(tokens).parse().unwrap();
+            Eval::new().eval(&mut env, nodes).unwrap();
+        }
+        {
+            let tokens = Lexer::new("(rec 4 3)").tokenize().unwrap();
+            let nodes = Parser::new(tokens).parse().unwrap();
+            assert_eq!(
+                Node::Integer(48),
                 *Eval::new().eval(&mut env, nodes).unwrap()
             );
         }

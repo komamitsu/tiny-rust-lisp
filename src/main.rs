@@ -4,7 +4,7 @@ use std::io::{self, Write};
 use tiny_rust_lisp::{Lisp, LispError};
 
 fn main() {
-    let lisp = Lisp::new();
+    let mut lisp = Lisp::new();
     
     loop {
         print!("> ");

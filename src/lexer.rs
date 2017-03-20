@@ -169,7 +169,7 @@ impl <'a> Lexer<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Lexer, ExtendedToken, Token};
+    use super::*;
 
     #[test]
     fn tokenize() {

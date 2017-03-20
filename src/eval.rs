@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::iter::Map;
 use std::rc::Rc;
 use parser::Node;
 
@@ -27,7 +26,9 @@ impl Env {
     }
 
     pub fn get(&self, key: &String) -> Option<Rc<Node>> {
-        for env in &self.envs {
+        // for env in &self.envs {
+        for i in 0..self.envs.len() {
+            let env = &self.envs[self.envs.len() - 1 - i];
             if let Some(v) = env.get(key) {
                 return Some(v.clone())
             }
@@ -262,26 +263,21 @@ impl Eval {
     fn call(&self, env: &mut Env, args: &[Rc<Node>], node: &Rc<Node>) -> Result<Rc<Node>, EvalError> {
         match *node.clone() {
             Node::Func(ref xs, ref body) => {
-                let saved_env_kvs = xs.iter().
-                    map(|k| (k, env.get(k))).
-                    collect::<Vec<(&String, Option<Rc<Node>>)>>();
+                if xs.len() != args.len() {
+                    panic!("The numbers of argments don't match: expected({:?}), got({:?})", xs, args);
+                }
+
+                env.push_env();
 
                 for (i, x) in xs.iter().enumerate() {
                     let evaled_arg = try!(self.eval(env, args[i].clone()));
                     env.insert(x.clone(), evaled_arg);
                 }
 
-                // Dynamic scope, not lexical scope
-                // TODO: All nodes in the Vec are copied here?
                 let result = try!(self.eval(env, Rc::new(Node::List(body.clone()))));
-                for x in xs {
-                    env.remove(x);
-                }
-                for (k, v) in saved_env_kvs {
-                    if let Some(saved_node) = v {
-                        env.insert(k.clone(), saved_node.clone());
-                    }
-                }
+
+                env.pop_env();
+
                 return Ok(result)
             },
             _ => ()
@@ -486,4 +482,3 @@ mod tests {
         );
     }
 }
-
