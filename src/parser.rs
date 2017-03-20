@@ -1,12 +1,13 @@
+use std::rc::Rc;
 use lexer::*;
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum Node {
     Integer(i64),
     Keyword(String),
-    List(Vec<Node>),
-    QuotedList(Vec<Node>),
-    Func(Vec<String>, Vec<Node>),
+    List(Vec<Rc<Node>>),
+    QuotedList(Vec<Rc<Node>>),
+    Func(Vec<String>, Vec<Rc<Node>>),
     True,
     False,
 }
@@ -30,21 +31,21 @@ impl Parser {
         }
     }
 
-    pub fn parse(&mut self) -> Option<Node> {
+    pub fn parse(&mut self) -> Option<Rc<Node>> {
         match self.next_token() {
             // Check EOF
             None => None,
             Some(token) => match token.token {
-                Token::LParen => Some(Node::List(self.parse_list())),
+                Token::LParen => Some(Rc::new(Node::List(self.parse_list()))),
                 Token::RParen => None,
-                Token::Integer(i) => Some(Node::Integer(i)),
-                Token::Keyword(s) => Some(Node::Keyword(s)),
+                Token::Integer(i) => Some(Rc::new(Node::Integer(i))),
+                Token::Keyword(s) => Some(Rc::new(Node::Keyword(s))),
                 Token::Quote => self.parse_quoted_list(),
             }
         }
     }
 
-    fn parse_list(&mut self) -> Vec<Node> {
+    fn parse_list(&mut self) -> Vec<Rc<Node>> {
         let mut list = Vec::new();
         while let Some(node) = self.parse() {
             list.push(node)
@@ -52,7 +53,7 @@ impl Parser {
         list
     }
 
-    fn parse_quoted_list(&mut self) -> Option<Node> {
+    fn parse_quoted_list(&mut self) -> Option<Rc<Node>> {
         match self.next_token() {
             // Check EOF
             None => None,
@@ -62,7 +63,7 @@ impl Parser {
                     while let Some(node) = self.parse() {
                         list.push(node)
                     }
-                    Some(Node::QuotedList(list))
+                    Some(Rc::new(Node::QuotedList(list)))
                 },
                 // TODO
                 _ => None
@@ -73,8 +74,7 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use lexer::{ExtendedToken, Token};
-    use super::{Node, Parser};
+    use super::*;
 
     #[test]
     fn parse0() {
@@ -110,15 +110,15 @@ mod tests {
         assert_eq!(
             Node::List(
                 vec![
-                    Node::Keyword(String::from("+")),
-                    Node::Integer(1),
-                    Node::List(
+                    Rc::new(Node::Keyword(String::from("+"))),
+                    Rc::new(Node::Integer(1)),
+                    Rc::new(Node::List(
                         vec![
-                            Node::Keyword(String::from("-")),
-                            Node::Integer(5),
-                            Node::Integer(2),
-                        ])]),
-            Parser::new(tokens).parse().unwrap()
+                            Rc::new(Node::Keyword(String::from("-"))),
+                            Rc::new(Node::Integer(5)),
+                            Rc::new(Node::Integer(2)),
+                        ]))]),
+            *Parser::new(tokens).parse().unwrap()
         );
     }
 
@@ -139,8 +139,8 @@ mod tests {
             },
         ];
         assert_eq!(
-            Node::QuotedList(vec![Node::Integer(1)]),
-            Parser::new(tokens).parse().unwrap()
+            Node::QuotedList(vec![Rc::new(Node::Integer(1))]),
+            *Parser::new(tokens).parse().unwrap()
         );
     }
 }

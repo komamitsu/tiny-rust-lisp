@@ -71,7 +71,7 @@ impl Eval {
     fn calc_integer<F>(&self,
                        env: &mut Env,
                        f: &F,
-                       args: &[Node], node: &Node) -> Result<Node, EvalError>
+                       args: &[Rc<Node>], node: &Rc<Node>) -> Result<Rc<Node>, EvalError>
         where F: Fn(i64, i64) -> i64 {
 
         let result =
@@ -80,19 +80,22 @@ impl Eval {
                 |a, x| {
                     let nd = self.eval(env, x.clone());
                     match nd {
-                        Ok(Node::Integer(i)) => match a {
-                            Some(Ok(aa)) => Some(Ok(f(aa, i))),
-                            Some(Err(err)) => Some(Err(err)),
-                            None => Some(Ok(i)),
+                        Ok(rcnode) => match *rcnode.clone() {
+                            Node::Integer(i) => match a {
+                                Some(Ok(aa)) => Some(Ok(f(aa, i))),
+                                Some(Err(err)) => Some(Err(err)),
+                                None => Some(Ok(i)),
+                            },
+                            _ => Some(Err(EvalError(
+                                        format!("{:?} takes only an integer, but got {:?}", node, x)))),
                         },
-                        Ok(_) => Some(Err(EvalError(format!("{:?} takes only an integer, but got {:?}", node, x)))),
                         Err(err) => Some(Err(err)),
                     }
                 }
             );
 
         match result {
-            Some(Ok(i)) => Ok(Node::Integer(i)),
+            Some(Ok(i)) => Ok(Rc::new(Node::Integer(i))),
             Some(Err(err)) => Err(err),
             None => Err(EvalError(format!("Empty argument")))
         }
@@ -101,8 +104,8 @@ impl Eval {
     fn cond<F>(&self,
                env: &mut Env,
                f: &F,
-               args: &[Node],
-               node: &Node) -> Result<Node, EvalError>
+               args: &[Rc<Node>],
+               node: &Rc<Node>) -> Result<Rc<Node>, EvalError>
         where F: Fn(i64, i64) -> bool {
 
         let result =
@@ -111,19 +114,23 @@ impl Eval {
                 |a, x| {
                     let nd = self.eval(env, x.clone());
                     match nd {
-                        Ok(Node::Integer(i)) => match a {
-                            Some(Ok((result, prev))) => Some(Ok((result && f(prev, i), i))),
-                            Some(Err(err)) => Some(Err(err)),
-                            None => Some(Ok((true, i))),
+                        Ok(rcnode) => match *rcnode.clone() {
+                            Node::Integer(i) => match a {
+                                Some(Ok((result, prev))) => Some(Ok((result && f(prev, i), i))),
+                                Some(Err(err)) => Some(Err(err)),
+                                None => Some(Ok((true, i))),
+                            },
+                            _ => Some(Err(EvalError(
+                                        format!("{:?} takes only an integer, but got {:?}", node, x)))),
                         },
-                        Ok(_) => Some(Err(EvalError(format!("{:?} takes only an integer, but got {:?}", node, x)))),
                         Err(err) => Some(Err(err)),
                     }
                 }
             );
 
         match result {
-            Some(Ok(result)) => Ok(if result.0 { Node::True } else { Node::False }),
+            Some(Ok(result)) => Ok(if result.0 { Rc::new(Node::True) }
+                                   else { Rc::new(Node::False) }),
             Some(Err(err)) => Err(err),
             None => Err(EvalError(format!("Empty argument")))
         }
@@ -131,37 +138,39 @@ impl Eval {
 
     fn if_then_else(&self,
                     env: &mut Env,
-                    args: &[Node],
-                    node: &Node) -> Result<Node, EvalError> {
+                    args: &[Rc<Node>],
+                    node: &Rc<Node>) -> Result<Rc<Node>, EvalError> {
 
         if args.len() < 2 || args.len() > 3 {
-            return Err(EvalError(format!("`if` takes 2 or 3 arguments, but got {:?}", args)));
+            return Err(EvalError(
+                    format!("`if` takes 2 or 3 arguments, but got {:?}", args)));
         }
 
-        Ok(match &try!(self.eval(env, args[0].clone())) {
-            &Node::True => try!(self.eval(env, args[1].clone())),
-            &Node::False => {
+        Ok(match *try!(self.eval(env, args[0].clone())).clone() {
+            Node::True => try!(self.eval(env, args[1].clone())),
+            Node::False => {
                 if args.len() == 3 {
                     try!(self.eval(env, args[2].clone()))
                 }
                 else {
-                    Node::List(Vec::new())
+                    Rc::new(Node::List(Vec::new()))
                 }
             },
-            _ => return Err(EvalError(format!("The 1st parameter of `if` should be boolean, but got {:?}", args)))
+            _ => return Err(EvalError(
+                    format!("The 1st parameter of `if` should be boolean, but got {:?}", args)))
         })
     }
 
     fn car(&self,
            env: &mut Env,
-           args: &[Node],
-           node: &Node) -> Result<Node, EvalError> {
+           args: &[Rc<Node>],
+           node: &Rc<Node>) -> Result<Rc<Node>, EvalError> {
 
         if args.len() == 1 {
-            if let &Node::QuotedList(ref xs) = &args[0] {
+            if let Node::QuotedList(ref xs) = *args[0].clone() {
                 return Ok(match xs.split_first() {
                     Some((hd, _)) => hd.clone(),
-                    None => Node::List(vec![])
+                    None => Rc::new(Node::List(Vec::new()))
                 })
             }
         }
@@ -171,15 +180,17 @@ impl Eval {
 
     fn cdr(&self,
            env: &mut Env,
-           args: &[Node],
-           node: &Node) -> Result<Node, EvalError> {
+           args: &[Rc<Node>],
+           node: &Rc<Node>) -> Result<Rc<Node>, EvalError> {
 
         if args.len() == 1 {
-            if let &Node::QuotedList(ref xs) = &args[0] {
-                return Ok(match xs.split_first() {
-                    Some((_, tl)) => Node::QuotedList(tl.to_vec()),
-                    None => Node::List(vec![])
-                })
+            if let Node::QuotedList(ref xs) = *args[0].clone() {
+                return Ok(
+                    match xs.split_first() {
+                        Some((_, tl)) => Rc::new(Node::QuotedList((*tl.clone()).to_vec())),
+                        None => Rc::new(Node::List(Vec::new()))
+                    }
+                )
             }
         }
 
@@ -188,44 +199,47 @@ impl Eval {
 
     fn setq(&self,
             env: &mut Env,
-            args: &[Node],
-            node: &Node) -> Result<Node, EvalError> {
+            args: &[Rc<Node>],
+            node: &Rc<Node>) -> Result<Rc<Node>, EvalError> {
 
         if args.len() % 2 == 0 {
             let mut key = None;
             for arg in args {
                 if let Some(k) = key {
                     let evalated_node = try!(self.eval(env, arg.clone()));
-                    env.insert(k, Rc::new(evalated_node));
+                    env.insert(k, evalated_node);
                     key = None;
                 }
                 else {
-                    if let &Node::Keyword(ref k) = arg {
+                    if let Node::Keyword(ref k) = *arg.clone() {
                         key = Some(k.clone())
                     }
                     else {
-                        return Err(EvalError(format!("`setq` accepts only Node::Keyword as a key, but got {:?}", arg)));
+                        return Err(EvalError(format!(
+                                    "`setq` accepts only Node::Keyword as a key, but got {:?}", arg)));
                     }
                 }
             }
             return Ok(node.clone())
         }
 
-        Err(EvalError(format!("`setq` takes only key value pairs, but got {:?}", args)))
+        Err(EvalError(
+                format!("`setq` takes only key value pairs, but got {:?}", args)))
     }
 
-    fn lambda(&self, env: &mut Env, args: &[Node], node: &Node) -> Result<Node, EvalError> {
+    fn lambda(&self, env: &mut Env, args: &[Rc<Node>], node: &Rc<Node>) -> Result<Rc<Node>, EvalError> {
         if args.len() == 2 {
-            match (&args[0], &args[1]) {
+            match (&*args[0].clone(), &*args[1].clone()) {
                 (&Node::List(ref xs), &Node::List(ref body)) => {
                     let mut fargs = Vec::new();
                     let mut errors = Vec::new();
 
                     for x in xs {
-                        match x {
-                            &Node::Keyword(ref kwd) => fargs.push(kwd.clone()),
+                        match *x.clone() {
+                            Node::Keyword(ref kwd) => fargs.push(kwd.clone()),
                             _ => errors.push(
-                                EvalError(format!("The 2nd parameter of `lambda` should be a list of keywords, but got {:?}", args))
+                                    EvalError(format!(
+                                        "The 2nd parameter of `lambda` should be a list of keywords, but got {:?}", args))
                                 ),
                         }
                     }
@@ -234,29 +248,32 @@ impl Eval {
                         return Err(errors[0].clone())
                     }
 
-                    return Ok(Node::Func(fargs, body.clone()))
+                    // TODO: Avoid copying
+                    return Ok(Rc::new(Node::Func(fargs, body.clone())))
                 },
                 _ => ()
             }
         }
 
-        Err(EvalError(format!("`lambda` takes only (name:keyword args:list body:list), but got {:?}", args)))
+        Err(EvalError(
+                format!("`lambda` takes only (name:keyword args:list body:list), but got {:?}", args)))
     }
 
-    fn call(&self, env: &mut Env, args: &[Node], node: &Node) -> Result<Node, EvalError> {
-        match node {
-            &Node::Func(ref xs, ref body) => {
+    fn call(&self, env: &mut Env, args: &[Rc<Node>], node: &Rc<Node>) -> Result<Rc<Node>, EvalError> {
+        match *node.clone() {
+            Node::Func(ref xs, ref body) => {
                 let saved_env_kvs = xs.iter().
                     map(|k| (k, env.get(k))).
                     collect::<Vec<(&String, Option<Rc<Node>>)>>();
 
                 for (i, x) in xs.iter().enumerate() {
                     let evaled_arg = try!(self.eval(env, args[i].clone()));
-                    env.insert(x.clone(), Rc::new(evaled_arg));
+                    env.insert(x.clone(), evaled_arg);
                 }
 
                 // Dynamic scope, not lexical scope
-                let result = try!(self.eval(env, Node::List(body.clone())));
+                // TODO: All nodes in the Vec are copied here?
+                let result = try!(self.eval(env, Rc::new(Node::List(body.clone()))));
                 for x in xs {
                     env.remove(x);
                 }
@@ -270,28 +287,31 @@ impl Eval {
             _ => ()
         }
 
-        Err(EvalError(format!("Failed to call a function due to unexpected arguments: node is {:?} and arguments are {:?}", node, args)))
+        Err(EvalError(
+                format!("Failed to call a function due to unexpected arguments: node is {:?} and arguments are {:?}",
+                        node, args)))
     }
 
-    pub fn eval(&self, env: &mut Env, node: Node) -> Result<Node, EvalError> {
-        match node {
-            Node::Integer(_) => Ok(node),
-            Node::Keyword(kwd) => {
+    pub fn eval(&self, env: &mut Env, node: Rc<Node>) -> Result<Rc<Node>, EvalError> {
+        match &*node.clone() {
+            &Node::Integer(_) => Ok(node),
+            &Node::Keyword(ref kwd) => {
                 let nd = match env.get(&kwd) {
                     Some(x) => x,
-                    None => return Ok(Node::Keyword(kwd)),
+                    None => return Ok(Rc::new(Node::Keyword(kwd.clone()))),
                 };
-                self.eval(env, (*nd.clone()).clone())
+                self.eval(env, nd.clone())
             },
-            Node::List(ref xs) => self.eval_func(env, &node, xs),
-            Node::QuotedList(x) => Ok(Node::List(x)),
+            &Node::List(ref xs) => self.eval_func(env, &node, xs),
+            // TODO: Avoid copying
+            &Node::QuotedList(ref x) => Ok(Rc::new(Node::List(x.clone()))),
             _ => Ok(node),
         }
     }
 
-    fn eval_func(&self, env: &mut Env, node: &Node, xs: &Vec<Node>) -> Result<Node, EvalError> {
+    fn eval_func(&self, env: &mut Env, node: &Rc<Node>, xs: &Vec<Rc<Node>>) -> Result<Rc<Node>, EvalError> {
         let (hd, tl) = xs.split_first().unwrap();
-        if let &Node::Keyword(ref kwd) = hd {
+        if let &Node::Keyword(ref kwd) = &*hd.clone() {
             match kwd.as_str() {
                 "+" => self.calc_integer(env, &|a, i| a + i, tl, node),
                 "-" => self.calc_integer(env, &|a, i| a - i, tl, node),
@@ -331,78 +351,78 @@ mod tests {
     fn eval() {
         assert_eq!(
             Node::Integer(42),
-            Eval::new().eval(
+            *Eval::new().eval(
                 &mut Env::new(),
-                Node::List(
+                Rc::new(Node::List(
                     vec![
-                        Node::Keyword(String::from("+")),
-                        Node::Integer(2),
-                        Node::Integer(40),
+                        Rc::new(Node::Keyword(String::from("+"))),
+                        Rc::new(Node::Integer(2)),
+                        Rc::new(Node::Integer(40)),
                     ]
-                )
+                ))
             ).unwrap()
         );
 
         assert_eq!(
             Node::Integer(42),
-            Eval::new().eval(
+            *Eval::new().eval(
                 &mut Env::new(),
-                Node::List(
+                Rc::new(Node::List(
                     vec![
-                        Node::Keyword(String::from("*")),
-                        Node::Integer(6),
-                        Node::List(
+                        Rc::new(Node::Keyword(String::from("*"))),
+                        Rc::new(Node::Integer(6)),
+                        Rc::new(Node::List(
                             vec![
-                                Node::Keyword(String::from("-")),
-                                Node::Integer(42),
-                                Node::Integer(35),
+                                Rc::new(Node::Keyword(String::from("-"))),
+                                Rc::new(Node::Integer(42)),
+                                Rc::new(Node::Integer(35)),
                             ]
-                        ),
+                        )),
                     ]
-                )
+                ))
             ).unwrap()
         );
 
         assert_eq!(
             Node::Integer(42),
-            Eval::new().eval(
+            *Eval::new().eval(
                 &mut Env::new(),
-                Node::List(
+                Rc::new(Node::List(
                     vec![
-                        Node::Keyword(String::from("car")),
-                        Node::QuotedList(
+                        Rc::new(Node::Keyword(String::from("car"))),
+                        Rc::new(Node::QuotedList(
                             vec![
-                                Node::Integer(42),
-                                Node::Integer(-123),
-                                Node::Integer(0),
+                                Rc::new(Node::Integer(42)),
+                                Rc::new(Node::Integer(-123)),
+                                Rc::new(Node::Integer(0)),
                             ]
-                        ),
+                        )),
                     ]
-                )
+                ))
             ).unwrap()
         );
 
         assert_eq!(
             Node::QuotedList(
                 vec![
-                    Node::Integer(4),
-                    Node::Integer(2),
+                    Rc::new(Node::Integer(4)),
+                    Rc::new(Node::Integer(2)),
                 ]
             ),
-            Eval::new().eval(
+            *Eval::new().eval(
                 &mut Env::new(),
-                Node::List(
+                Rc::new(Node::List(
                     vec![
-                        Node::Keyword(String::from("cdr")),
-                        Node::QuotedList(
+                        Rc::new(Node::Keyword(String::from("cdr"))),
+                        Rc::new(Node::QuotedList(
                             vec![
-                                Node::Integer(0),
-                                Node::Integer(4),
-                                Node::Integer(2),
+                                Rc::new(Node::Integer(0)),
+                                Rc::new(Node::Integer(4)),
+                                Rc::new(Node::Integer(2)),
                             ]
-                        ),
+                        )),
                     ]
-                )
+                ))
             ).unwrap()
         );
 
@@ -410,58 +430,58 @@ mod tests {
         env0.insert(String::from("x"), Rc::new(Node::Integer(40)));
         assert_eq!(
             Node::Integer(42),
-            Eval::new().eval(
+            *Eval::new().eval(
                 env0,
-                Node::List(
+                Rc::new(Node::List(
                     vec![
-                        Node::Keyword(String::from("+")),
-                        Node::Integer(2),
-                        Node::Keyword(String::from("x"))
+                        Rc::new(Node::Keyword(String::from("+"))),
+                        Rc::new(Node::Integer(2)),
+                        Rc::new(Node::Keyword(String::from("x")))
                     ]
-                )
+                ))
             ).unwrap()
         );
 
         let env1 = &mut Env::new();
         Eval::new().eval(
             env1,
-            Node::List(
+            Rc::new(Node::List(
                 vec![
-                    Node::Keyword(String::from("setq")),
-                    Node::Keyword(String::from("add")),
-                    Node::List(
+                    Rc::new(Node::Keyword(String::from("setq"))),
+                    Rc::new(Node::Keyword(String::from("add"))),
+                    Rc::new(Node::List(
                         vec![
-                            Node::Keyword(String::from("lambda")),
-                            Node::List(
+                            Rc::new(Node::Keyword(String::from("lambda"))),
+                            Rc::new(Node::List(
                                 vec![
-                                    Node::Keyword(String::from("a")),
-                                    Node::Keyword(String::from("b")),
+                                    Rc::new(Node::Keyword(String::from("a"))),
+                                    Rc::new(Node::Keyword(String::from("b"))),
                                 ]
-                            ),
-                            Node::List(
+                            )),
+                            Rc::new(Node::List(
                                 vec![
-                                    Node::Keyword(String::from("+")),
-                                    Node::Keyword(String::from("a")),
-                                    Node::Keyword(String::from("b")),
+                                    Rc::new(Node::Keyword(String::from("+"))),
+                                    Rc::new(Node::Keyword(String::from("a"))),
+                                    Rc::new(Node::Keyword(String::from("b"))),
                                 ]
-                            ),
+                            )),
                         ]
-                    )
+                    ))
                 ]
-            )
+            ))
         );
 
         assert_eq!(
             Node::Integer(42),
-            Eval::new().eval(
+            *Eval::new().eval(
                 env1,
-                Node::List(
+                Rc::new(Node::List(
                     vec![
-                        Node::Keyword(String::from("add")),
-                        Node::Integer(40),
-                        Node::Integer(2),
+                        Rc::new(Node::Keyword(String::from("add"))),
+                        Rc::new(Node::Integer(40)),
+                        Rc::new(Node::Integer(2)),
                     ]
-                )
+                ))
             ).unwrap()
         );
     }
