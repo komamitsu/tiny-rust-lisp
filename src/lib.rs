@@ -65,7 +65,7 @@ mod tests {
             let nodes = Parser::new(tokens).parse().unwrap();
             assert_eq!(
                 Node::Integer(42),
-                Eval::new().eval(&mut env, nodes).unwrap()
+                *Eval::new().eval(&mut env, nodes).unwrap()
             )
         }
 
@@ -75,7 +75,7 @@ mod tests {
             let nodes = Parser::new(tokens).parse().unwrap();
             assert_eq!(
                 Node::Integer(99),
-                Eval::new().eval(&mut env, nodes).unwrap()
+                *Eval::new().eval(&mut env, nodes).unwrap()
             )
         }
     }
@@ -95,7 +95,7 @@ mod tests {
             let nodes = Parser::new(tokens).parse().unwrap();
             assert_eq!(
                 Node::Integer(21),
-                Eval::new().eval(&mut env, nodes).unwrap()
+                *Eval::new().eval(&mut env, nodes).unwrap()
             );
         }
     }

@@ -74,8 +74,7 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use lexer::{ExtendedToken, Token};
-    use super::{Node, Parser};
+    use super::*;
 
     #[test]
     fn parse0() {
@@ -111,15 +110,15 @@ mod tests {
         assert_eq!(
             Node::List(
                 vec![
-                    Node::Keyword(String::from("+")),
-                    Node::Integer(1),
-                    Node::List(
+                    Rc::new(Node::Keyword(String::from("+"))),
+                    Rc::new(Node::Integer(1)),
+                    Rc::new(Node::List(
                         vec![
-                            Node::Keyword(String::from("-")),
-                            Node::Integer(5),
-                            Node::Integer(2),
-                        ])]),
-            Parser::new(tokens).parse().unwrap()
+                            Rc::new(Node::Keyword(String::from("-"))),
+                            Rc::new(Node::Integer(5)),
+                            Rc::new(Node::Integer(2)),
+                        ]))]),
+            *Parser::new(tokens).parse().unwrap()
         );
     }
 
@@ -140,8 +139,8 @@ mod tests {
             },
         ];
         assert_eq!(
-            Node::QuotedList(vec![Node::Integer(1)]),
-            Parser::new(tokens).parse().unwrap()
+            Node::QuotedList(vec![Rc::new(Node::Integer(1))]),
+            *Parser::new(tokens).parse().unwrap()
         );
     }
 }

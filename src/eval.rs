@@ -351,78 +351,78 @@ mod tests {
     fn eval() {
         assert_eq!(
             Node::Integer(42),
-            Eval::new().eval(
+            *Eval::new().eval(
                 &mut Env::new(),
-                Node::List(
+                Rc::new(Node::List(
                     vec![
-                        Node::Keyword(String::from("+")),
-                        Node::Integer(2),
-                        Node::Integer(40),
+                        Rc::new(Node::Keyword(String::from("+"))),
+                        Rc::new(Node::Integer(2)),
+                        Rc::new(Node::Integer(40)),
                     ]
-                )
+                ))
             ).unwrap()
         );
 
         assert_eq!(
             Node::Integer(42),
-            Eval::new().eval(
+            *Eval::new().eval(
                 &mut Env::new(),
-                Node::List(
+                Rc::new(Node::List(
                     vec![
-                        Node::Keyword(String::from("*")),
-                        Node::Integer(6),
-                        Node::List(
+                        Rc::new(Node::Keyword(String::from("*"))),
+                        Rc::new(Node::Integer(6)),
+                        Rc::new(Node::List(
                             vec![
-                                Node::Keyword(String::from("-")),
-                                Node::Integer(42),
-                                Node::Integer(35),
+                                Rc::new(Node::Keyword(String::from("-"))),
+                                Rc::new(Node::Integer(42)),
+                                Rc::new(Node::Integer(35)),
                             ]
-                        ),
+                        )),
                     ]
-                )
+                ))
             ).unwrap()
         );
 
         assert_eq!(
             Node::Integer(42),
-            Eval::new().eval(
+            *Eval::new().eval(
                 &mut Env::new(),
-                Node::List(
+                Rc::new(Node::List(
                     vec![
-                        Node::Keyword(String::from("car")),
-                        Node::QuotedList(
+                        Rc::new(Node::Keyword(String::from("car"))),
+                        Rc::new(Node::QuotedList(
                             vec![
-                                Node::Integer(42),
-                                Node::Integer(-123),
-                                Node::Integer(0),
+                                Rc::new(Node::Integer(42)),
+                                Rc::new(Node::Integer(-123)),
+                                Rc::new(Node::Integer(0)),
                             ]
-                        ),
+                        )),
                     ]
-                )
+                ))
             ).unwrap()
         );
 
         assert_eq!(
             Node::QuotedList(
                 vec![
-                    Node::Integer(4),
-                    Node::Integer(2),
+                    Rc::new(Node::Integer(4)),
+                    Rc::new(Node::Integer(2)),
                 ]
             ),
-            Eval::new().eval(
+            *Eval::new().eval(
                 &mut Env::new(),
-                Node::List(
+                Rc::new(Node::List(
                     vec![
-                        Node::Keyword(String::from("cdr")),
-                        Node::QuotedList(
+                        Rc::new(Node::Keyword(String::from("cdr"))),
+                        Rc::new(Node::QuotedList(
                             vec![
-                                Node::Integer(0),
-                                Node::Integer(4),
-                                Node::Integer(2),
+                                Rc::new(Node::Integer(0)),
+                                Rc::new(Node::Integer(4)),
+                                Rc::new(Node::Integer(2)),
                             ]
-                        ),
+                        )),
                     ]
-                )
+                ))
             ).unwrap()
         );
 
@@ -430,58 +430,58 @@ mod tests {
         env0.insert(String::from("x"), Rc::new(Node::Integer(40)));
         assert_eq!(
             Node::Integer(42),
-            Eval::new().eval(
+            *Eval::new().eval(
                 env0,
-                Node::List(
+                Rc::new(Node::List(
                     vec![
-                        Node::Keyword(String::from("+")),
-                        Node::Integer(2),
-                        Node::Keyword(String::from("x"))
+                        Rc::new(Node::Keyword(String::from("+"))),
+                        Rc::new(Node::Integer(2)),
+                        Rc::new(Node::Keyword(String::from("x")))
                     ]
-                )
+                ))
             ).unwrap()
         );
 
         let env1 = &mut Env::new();
         Eval::new().eval(
             env1,
-            Node::List(
+            Rc::new(Node::List(
                 vec![
-                    Node::Keyword(String::from("setq")),
-                    Node::Keyword(String::from("add")),
-                    Node::List(
+                    Rc::new(Node::Keyword(String::from("setq"))),
+                    Rc::new(Node::Keyword(String::from("add"))),
+                    Rc::new(Node::List(
                         vec![
-                            Node::Keyword(String::from("lambda")),
-                            Node::List(
+                            Rc::new(Node::Keyword(String::from("lambda"))),
+                            Rc::new(Node::List(
                                 vec![
-                                    Node::Keyword(String::from("a")),
-                                    Node::Keyword(String::from("b")),
+                                    Rc::new(Node::Keyword(String::from("a"))),
+                                    Rc::new(Node::Keyword(String::from("b"))),
                                 ]
-                            ),
-                            Node::List(
+                            )),
+                            Rc::new(Node::List(
                                 vec![
-                                    Node::Keyword(String::from("+")),
-                                    Node::Keyword(String::from("a")),
-                                    Node::Keyword(String::from("b")),
+                                    Rc::new(Node::Keyword(String::from("+"))),
+                                    Rc::new(Node::Keyword(String::from("a"))),
+                                    Rc::new(Node::Keyword(String::from("b"))),
                                 ]
-                            ),
+                            )),
                         ]
-                    )
+                    ))
                 ]
-            )
+            ))
         );
 
         assert_eq!(
             Node::Integer(42),
-            Eval::new().eval(
+            *Eval::new().eval(
                 env1,
-                Node::List(
+                Rc::new(Node::List(
                     vec![
-                        Node::Keyword(String::from("add")),
-                        Node::Integer(40),
-                        Node::Integer(2),
+                        Rc::new(Node::Keyword(String::from("add"))),
+                        Rc::new(Node::Integer(40)),
+                        Rc::new(Node::Integer(2)),
                     ]
-                )
+                ))
             ).unwrap()
         );
     }
